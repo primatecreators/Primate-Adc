@@ -18,7 +18,10 @@ type ApiState = "loading" | "ready" | "forbidden" | "error";
 const PAGE_SIZE = 20;
 
 function text(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : "—";
+  if (typeof value === "string") return value.trim() ? value : "—";
+  if (typeof value === "number") return Number.isFinite(value) ? new Intl.NumberFormat("es-AR").format(value) : "—";
+  if (typeof value === "boolean") return value ? "Sí" : "No";
+  return "—";
 }
 
 function date(value: number | undefined) {
@@ -34,13 +37,13 @@ function bytes(value: number | undefined) {
 function contactUrl(method: unknown, contact: unknown) {
   if (typeof contact !== "string" || !contact.trim()) return null;
   const value = contact.trim();
+  if (/^https?:\/\//i.test(value)) return value;
   if (typeof method === "string" && method.toLowerCase().includes("telegram")) {
     return `https://t.me/${value.replace(/^@/, "")}`;
   }
   if (typeof method === "string" && method.toLowerCase().includes("whatsapp")) {
     return `https://wa.me/${value.replace(/[^\d]/g, "")}`;
   }
-  if (/^https?:\/\//i.test(value)) return value;
   return `mailto:${value}`;
 }
 
@@ -104,7 +107,7 @@ export default function AdminPage() {
         {leads.map((lead) => <article className="lead-card" key={lead.id}>
           <div className="lead-card-top"><div><span className="lead-kind">{lead.kind === "creator" ? "Creador" : lead.kind === "brand" ? "Marca / partner" : lead.kind}</span><h2>{text(lead.payload.name)}</h2></div><span className={`lead-status status-${lead.status || "pending"}`}>{text(lead.status)}</span></div>
           <p className="lead-date">{date(lead.created_at)} · {text(lead.payload.country || lead.payload.targetMarkets)}</p>
-          <div className="lead-details">{Object.entries(lead.payload).filter(([key, value]) => key !== "name" && key !== "contact" && key !== "contactMethod" && value !== undefined && value !== "").slice(0, 8).map(([key, value]) => <div className="detail" key={key}><span>{key}</span><strong>{Array.isArray(value) ? value.join(", ") : text(value)}</strong></div>)}</div>
+          <div className="lead-details">{Object.entries(lead.payload).filter(([key, value]) => key !== "name" && key !== "contact" && key !== "contactMethod" && value !== undefined && value !== "").map(([key, value]) => <div className="detail" key={key}><span>{key}</span><strong>{Array.isArray(value) ? value.join(", ") : text(value)}</strong></div>)}</div>
           <div className="lead-actions"><button type="button" onClick={() => openContact(lead)} disabled={!contactUrl(lead.payload.contactMethod, lead.payload.contact)}>Contactar</button>{(lead.files || []).map((file) => <button className="file-button" type="button" key={file.key} onClick={() => void openFile(file)} disabled={busyKey === file.key}>{busyKey === file.key ? "Abriendo…" : `${text(file.field)} ${bytes(file.size)}`}</button>)}</div>
         </article>)}
       </section>}
